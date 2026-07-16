@@ -72,6 +72,52 @@ const inputAlbumTitle = document.getElementById('input-album-title');
 const certEditList = document.getElementById('cert-edit-list');
 const btnAddCertItem = document.getElementById('btn-add-cert-item');
 
+// ─── Image Compression Helper ─────────────────────────────────────────────
+// Resizes & compresses an image DataURL using Canvas.
+// maxW: max width in px, quality: 0~1 (JPEG), returns Promise<string>
+function compressImage(dataUrl, maxW = 800, quality = 0.72) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxW / img.width);
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
+// Avatar Upload Elements
+const avatarUploadWrap = document.getElementById('avatar-upload-wrap');
+const avatarPreview = document.getElementById('avatar-preview');
+const inputAvatar = document.getElementById('input-avatar');
+
+// Pending avatar data (Base64) — set when user picks a file before saving
+let pendingAvatarData = null;
+
+// Avatar upload click
+if (avatarUploadWrap && inputAvatar) {
+  avatarUploadWrap.addEventListener('click', () => inputAvatar.click());
+  inputAvatar.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      // Compress avatar: max 600px wide (portrait), quality 0.75
+      const compressed = await compressImage(ev.target.result, 600, 0.75);
+      pendingAvatarData = compressed;
+      if (avatarPreview) avatarPreview.src = compressed;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 // Lightbox Elements
 const lightboxModal = document.getElementById('lightbox-modal');
 const lightboxImg = document.getElementById('lightbox-img');
@@ -171,6 +217,13 @@ function updateDOM() {
   linkEmail.href = `mailto:${cardData.email}`;
   
   document.title = `${cardData.name} | 디지털 명함`;
+
+  // Update card background (profile photo)
+  if (cardData.avatar) {
+    card.style.setProperty('--avatar-url', `url('${cardData.avatar}')`);
+  } else {
+    card.style.removeProperty('--avatar-url');
+  }
 
   // Render Album Section Title & Certificates Slider
   const albumTitleDisplay = document.getElementById('display-album-title');
@@ -427,10 +480,11 @@ function addCertEditRow(image = '', title = '', tag = '') {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target.result;
-      row.dataset.imageData = dataUrl;
-      imgPreview.src = dataUrl;
+    reader.onload = async (ev) => {
+      // Compress cert image: max 800px, quality 0.72
+      const compressed = await compressImage(ev.target.result, 800, 0.72);
+      row.dataset.imageData = compressed;
+      imgPreview.src = compressed;
       imgPreview.style.display = 'block';
       imgPlaceholder.style.display = 'none';
     };
@@ -489,6 +543,13 @@ btnToggleEdit.addEventListener('click', () => {
   inputAlbumTitle.value = cardData.albumTitle || '경력 및 자격증 (슬라이드)';
   renderCertEditRows(cardData.certificates || []);
   
+  // Reset avatar preview to current saved avatar
+  pendingAvatarData = null;
+  if (avatarPreview) {
+    avatarPreview.src = cardData.avatar || 'avatar.jpg';
+  }
+  if (inputAvatar) inputAvatar.value = '';
+  
   editModal.classList.add('show');
 });
 
@@ -540,24 +601,45 @@ btnSaveEdit.addEventListener('click', () => {
     phone,
     email,
     albumTitle: inputAlbumTitle.value.trim(),
-    certificates: certsArray
+    certificates: certsArray,
+    avatar: pendingAvatarData !== null ? pendingAvatarData : (cardData.avatar || '')
   };
   
-  // 1. Save to LocalStorage immediately for instant local UI update
+  // 1. Always save FULL data (including images) to localStorage for this browser
   localStorage.setItem('cardData', JSON.stringify(cardData));
   updateDOM();
   editModal.classList.remove('show');
   showToast('명함 정보가 저장되었습니다.');
   
-  // 2. Sync to Firestore in the background
+  // 2. Sync to Firestore — strip Base64 images to stay under 1MB limit.
+  //    Images are stored in localStorage only; other browsers will see
+  //    the card without images (text/contact info still works perfectly).
+  const firestoreData = {
+    name: cardData.name,
+    title: cardData.title,
+    company: cardData.company,
+    phone: cardData.phone,
+    email: cardData.email,
+    albumTitle: cardData.albumTitle,
+    // Store only title & tag in Firestore; image Base64 stays local
+    certificates: cardData.certificates.map(c => ({
+      title: c.title,
+      tag: c.tag,
+      // Keep image only if it's a plain path/URL (not Base64)
+      image: c.image && !c.image.startsWith('data:') ? c.image : ''
+    })),
+    // Same for avatar
+    avatar: cardData.avatar && !cardData.avatar.startsWith('data:') ? cardData.avatar : ''
+  };
+
   console.log('Syncing card data to Firestore...');
-  cardDocRef.set(cardData)
+  cardDocRef.set(firestoreData)
     .then(() => {
       console.log('Successfully synced card data to Firestore');
     })
     .catch((error) => {
       console.error('Failed to sync card data to Firestore:', error);
-      showToast('서버 동기화 실패 (로컬 브라우저에만 저장됨)');
+      // Don't show error toast — local save already succeeded
     });
 });
 
