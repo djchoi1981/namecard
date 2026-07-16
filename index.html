@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>최덕진 | 디지털 명함</title>
+  
+  <!-- Open Graph / KakaoTalk Preview Tags -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="최덕진 | 디지털 명함">
+  <meta property="og:description" content="안녕하세요. 최덕진의 디지털 명함입니다. 연락처 저장 및 공유가 가능합니다.">
+  <!-- 
+    중요: 카카오톡 링크 공유 시 카카오톡 말풍선에 썸네일 이미지가 정상적으로 보이게 하려면, 
+    배포(Netlify, Vercel, GitHub Pages 등) 완료 후 아래 content 속성의 './avatar.jpg' 부분을 
+    실제 배포된 사이트의 이미지 절대경로(예: https://mycard.netlify.app/avatar.jpg)로 변경하셔야 합니다.
+  -->
+  <meta property="og:image" content="./avatar.jpg">
+  <meta property="og:url" content=""> 
+
+  <!-- CSS & FontAwesome -->
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Kakao SDK -->
+  <script src="https://developers.kakao.com/sdk/js/kakao.min.js"></script>
+</head>
+<body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <div class="container">
+    <div class="card" id="business-card">
+      
+      <!-- Edit Profile Button -->
+      <button class="edit-btn" id="btn-toggle-edit" title="명함 정보 편집">
+        <i class="fa-solid fa-pen-to-square"></i>
+      </button>
+
+      <!-- Profile Section -->
+      <div class="profile">
+        <div class="profile-details">
+          <h1 class="name" id="display-name">최덕진</h1>
+          <div class="title-container">
+            <span class="title" id="display-title">보험컨설턴트</span>
+          </div>
+          <p class="company" id="display-company">프리미엄 금융 솔루션</p>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Contact Info List -->
+      <ul class="info-list">
+        <li>
+          <a href="tel:01056462464" class="info-item" id="link-phone">
+            <div class="info-icon">
+              <i class="fa-solid fa-phone"></i>
+            </div>
+            <div class="info-details">
+              <span class="info-label">Phone</span>
+              <span class="info-value" id="val-phone">010-5646-2464</span>
+            </div>
+          </a>
+        </li>
+        <li>
+          <a href="mailto:djchoi19810402@gmail.com" class="info-item" id="link-email">
+            <div class="info-icon">
+              <i class="fa-solid fa-envelope"></i>
+            </div>
+            <div class="info-details">
+              <span class="info-label">Email</span>
+              <span class="info-value" id="val-email">djchoi19810402@gmail.com</span>
+            </div>
+          </a>
+        </li>
+      </ul>
+
+      <!-- Credentials & Certificates Album Section -->
+      <div class="album-section">
+        <span class="info-label album-section-title">경력 및 자격증 (슬라이드)</span>
+        <div class="album-container">
+          <div class="album-card" onclick="openLightbox('cert1.png', '자격증 및 라이센스')">
+            <img src="cert1.png" alt="자격증 1">
+            <div class="album-tag">자격증</div>
+          </div>
+          <div class="album-card" onclick="openLightbox('cert2.png', '우수 컨설턴트 수상 경력')">
+            <img src="cert2.png" alt="자격증 2">
+            <div class="album-tag">수상 경력</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Action Buttons Grid -->
+      <div class="action-grid">
+        <button class="action-btn btn-kakao" id="btn-kakao-share">
+          <i class="fa-solid fa-comment"></i>
+          <span>카톡 공유</span>
+        </button>
+        <button class="action-btn" id="btn-save-contact">
+          <i class="fa-solid fa-address-book"></i>
+          <span>연락처 저장</span>
+        </button>
+        <button class="action-btn" id="btn-qr">
+          <i class="fa-solid fa-qrcode"></i>
+          <span>QR 코드</span>
+        </button>
+        <button class="action-btn" id="btn-copy-link">
+          <i class="fa-solid fa-link"></i>
+          <span>링크 복사</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast-message">링크가 클립보드에 복사되었습니다.</div>
+
+  <!-- QR Code Modal -->
+  <div class="modal" id="qr-modal">
+    <div class="modal-content">
+      <button class="close-btn" id="modal-close">&times;</button>
+      <h3 class="qr-title">명함 QR 코드</h3>
+      <p class="qr-desc">카메라로 스캔하여 명함을 확인하세요.</p>
+      <div id="qrcode">
+        <img id="qr-img" src="" alt="QR Code" width="180" height="180">
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Profile Modal -->
+  <div class="modal" id="edit-modal">
+    <div class="modal-content edit-modal-content">
+      <button class="close-btn" id="edit-modal-close">&times;</button>
+      <h3 class="qr-title">명함 정보 편집</h3>
+      <p class="qr-desc">변경할 정보를 입력한 후 저장하세요. 브라우저에 즉시 저장됩니다.</p>
+      
+      <div class="form-group">
+        <label for="input-name">이름</label>
+        <input type="text" id="input-name" placeholder="이름을 입력하세요">
+      </div>
+      
+      <div class="form-group">
+        <label for="input-title">직책</label>
+        <input type="text" id="input-title" placeholder="직책을 입력하세요">
+      </div>
+      
+      <div class="form-group">
+        <label for="input-company">소속/회사</label>
+        <input type="text" id="input-company" placeholder="소속 또는 회사를 입력하세요">
+      </div>
+      
+      <div class="form-group">
+        <label for="input-phone">전화번호</label>
+        <input type="text" id="input-phone" placeholder="전화번호를 입력하세요">
+      </div>
+      
+      <div class="form-group">
+        <label for="input-email">이메일</label>
+        <input type="email" id="input-email" placeholder="이메일을 입력하세요">
+      </div>
+      
+      <button class="save-btn" id="btn-save-edit">저장하기</button>
+    </div>
+  </div>
+
+  <!-- Lightbox Modal -->
+  <div class="modal" id="lightbox-modal">
+    <div class="modal-content lightbox-content">
+      <button class="close-btn" id="lightbox-close">&times;</button>
+      <h3 class="qr-title" id="lightbox-title">자격증</h3>
+      <div class="lightbox-img-wrapper">
+        <img id="lightbox-img" src="" alt="Certificate Detail">
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="script.js?v=1.0.1"></script>
+</body>
+</html>
