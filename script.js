@@ -1,6 +1,3 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
 // Kakao Javascript App Key
 const KAKAO_APP_KEY = 'YOUR_KAKAO_JAVASCRIPT_APP_KEY';
 
@@ -15,10 +12,10 @@ const firebaseConfig = {
   measurementId: "G-E176M6EENT"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const cardDocRef = doc(db, "cards", "main");
+// Initialize Firebase (Compat)
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const cardDocRef = db.collection("cards").doc("main");
 
 // Default Card Data
 const defaultData = {
@@ -26,7 +23,12 @@ const defaultData = {
   title: '보험컨설턴트',
   company: '프리미엄 금융 솔루션',
   phone: '010-5646-2464',
-  email: 'djchoi19810402@gmail.com'
+  email: 'djchoi19810402@gmail.com',
+  albumTitle: '경력 및 자격증 (슬라이드)',
+  certificates: [
+    { image: 'cert1.png', title: '자격증 및 라이센스', tag: '자격증' },
+    { image: 'cert2.png', title: '우수 컨설턴트 수상 경력', tag: '수상 경력' }
+  ]
 };
 
 // State
@@ -66,6 +68,9 @@ const inputTitle = document.getElementById('input-title');
 const inputCompany = document.getElementById('input-company');
 const inputPhone = document.getElementById('input-phone');
 const inputEmail = document.getElementById('input-email');
+const inputAlbumTitle = document.getElementById('input-album-title');
+const certEditList = document.getElementById('cert-edit-list');
+const btnAddCertItem = document.getElementById('btn-add-cert-item');
 
 // Lightbox Elements
 const lightboxModal = document.getElementById('lightbox-modal');
@@ -117,8 +122,8 @@ if (showEditButton) {
 // Load Data from Firestore (with LocalStorage fallback)
 async function loadCardData() {
   try {
-    const docSnap = await getDoc(cardDocRef);
-    if (docSnap.exists()) {
+    const docSnap = await cardDocRef.get();
+    if (docSnap.exists) {
       cardData = docSnap.data();
       localStorage.setItem('cardData', JSON.stringify(cardData));
       console.log('Loaded card data from Firestore successfully');
@@ -126,7 +131,7 @@ async function loadCardData() {
       console.log('No document found in Firestore. Initializing with local/default data...');
       loadLocalOrPresetData();
       // Save it to Firestore so the document is created
-      await setDoc(cardDocRef, cardData);
+      await cardDocRef.set(cardData);
       console.log('Initialized Firestore with default card data');
     }
   } catch (error) {
@@ -166,6 +171,88 @@ function updateDOM() {
   linkEmail.href = `mailto:${cardData.email}`;
   
   document.title = `${cardData.name} | 디지털 명함`;
+
+  // Render Album Section Title & Certificates Slider
+  const albumTitleDisplay = document.getElementById('display-album-title');
+  const albumContainer = document.getElementById('album-container');
+  const albumSection = document.getElementById('album-section');
+  
+  if (albumTitleDisplay && albumContainer && albumSection) {
+    albumTitleDisplay.innerText = cardData.albumTitle || '경력 및 자격증 (슬라이드)';
+    albumContainer.innerHTML = '';
+    
+    const certs = cardData.certificates || [];
+    if (certs.length === 0) {
+      albumSection.style.display = 'none';
+    } else {
+      albumSection.style.display = 'block';
+
+      // Build cards
+      certs.forEach((cert, idx) => {
+        const card = document.createElement('div');
+        card.className = 'album-card';
+        card.onclick = () => window.openLightbox(cert.image, cert.title);
+        
+        const img = document.createElement('img');
+        img.src = cert.image;
+        img.alt = cert.title;
+        
+        // Overlay with title + tag
+        const overlay = document.createElement('div');
+        overlay.className = 'album-card-overlay';
+        
+        const cardTitle = document.createElement('span');
+        cardTitle.className = 'album-card-title';
+        cardTitle.innerText = cert.title;
+        
+        const tag = document.createElement('div');
+        tag.className = 'album-tag';
+        tag.innerText = cert.tag;
+        
+        overlay.appendChild(cardTitle);
+        overlay.appendChild(tag);
+        card.appendChild(img);
+        card.appendChild(overlay);
+        albumContainer.appendChild(card);
+      });
+
+      // Build dots
+      const dotsContainer = document.getElementById('album-dots');
+      if (dotsContainer) {
+        dotsContainer.innerHTML = '';
+        certs.forEach((_, idx) => {
+          const dot = document.createElement('span');
+          dot.className = 'album-dot' + (idx === 0 ? ' active' : '');
+          dot.addEventListener('click', () => {
+            albumContainer.scrollTo({ left: albumContainer.offsetWidth * idx, behavior: 'smooth' });
+          });
+          dotsContainer.appendChild(dot);
+        });
+      }
+
+      // Sync dots on scroll
+      albumContainer.addEventListener('scroll', () => {
+        const index = Math.round(albumContainer.scrollLeft / albumContainer.offsetWidth);
+        document.querySelectorAll('#album-dots .album-dot').forEach((dot, i) => {
+          dot.classList.toggle('active', i === index);
+        });
+      }, { passive: true });
+
+      // Nav arrows
+      const prevBtn = document.getElementById('album-prev');
+      const nextBtn = document.getElementById('album-next');
+      if (prevBtn && nextBtn) {
+        prevBtn.onclick = () => {
+          const index = Math.round(albumContainer.scrollLeft / albumContainer.offsetWidth);
+          albumContainer.scrollTo({ left: albumContainer.offsetWidth * Math.max(0, index - 1), behavior: 'smooth' });
+        };
+        nextBtn.onclick = () => {
+          const index = Math.round(albumContainer.scrollLeft / albumContainer.offsetWidth);
+          albumContainer.scrollTo({ left: albumContainer.offsetWidth * Math.min(certs.length - 1, index + 1), behavior: 'smooth' });
+        };
+      }
+    }
+  }
 }
 
 // 1. 3D Card Hover Effect (Desktop Only)
@@ -301,6 +388,97 @@ qrModal.addEventListener('click', (e) => {
   }
 });
 
+// Helper to render certificate input rows in edit modal
+function renderCertEditRows(certs) {
+  certEditList.innerHTML = '';
+  certs.forEach(cert => {
+    addCertEditRow(cert.image, cert.title, cert.tag);
+  });
+}
+
+function addCertEditRow(image = '', title = '', tag = '') {
+  const row = document.createElement('div');
+  row.className = 'cert-edit-row';
+  
+  // --- Image Upload Area ---
+  const imgUploadArea = document.createElement('div');
+  imgUploadArea.className = 'cert-img-upload-area';
+  
+  const imgPreview = document.createElement('img');
+  imgPreview.className = 'cert-img-preview';
+  imgPreview.src = image || '';
+  imgPreview.style.display = image ? 'block' : 'none';
+  imgPreview.alt = '미리보기';
+  
+  // Store current image data (Base64 or path) on the row element itself
+  row.dataset.imageData = image;
+  
+  const imgPlaceholder = document.createElement('div');
+  imgPlaceholder.className = 'cert-img-placeholder';
+  imgPlaceholder.style.display = image ? 'none' : 'flex';
+  imgPlaceholder.innerHTML = '<i class="fa-solid fa-image"></i><span>이미지 선택</span>';
+  
+  // Hidden file input
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.style.display = 'none';
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      row.dataset.imageData = dataUrl;
+      imgPreview.src = dataUrl;
+      imgPreview.style.display = 'block';
+      imgPlaceholder.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  });
+  
+  imgUploadArea.addEventListener('click', () => fileInput.click());
+  
+  imgUploadArea.appendChild(imgPreview);
+  imgUploadArea.appendChild(imgPlaceholder);
+  imgUploadArea.appendChild(fileInput);
+  
+  // --- Text Fields ---
+  const fields = document.createElement('div');
+  fields.className = 'cert-edit-fields';
+  
+  const titleInput = document.createElement('input');
+  titleInput.type = 'text';
+  titleInput.className = 'cert-title-input';
+  titleInput.placeholder = '제목 (예: 자격증 및 라이센스)';
+  titleInput.value = title;
+  
+  const tagInput = document.createElement('input');
+  tagInput.type = 'text';
+  tagInput.className = 'cert-tag-input';
+  tagInput.placeholder = '태그 (예: 자격증)';
+  tagInput.value = tag;
+  
+  fields.appendChild(imgUploadArea);
+  fields.appendChild(titleInput);
+  fields.appendChild(tagInput);
+  
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.className = 'del-cert-btn';
+  delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+  delBtn.onclick = () => row.remove();
+  
+  row.appendChild(fields);
+  row.appendChild(delBtn);
+  certEditList.appendChild(row);
+}
+
+// Add cert item button listener
+btnAddCertItem.addEventListener('click', () => {
+  addCertEditRow();
+});
+
 // 6. Edit Modal Toggle
 btnToggleEdit.addEventListener('click', () => {
   inputName.value = cardData.name;
@@ -308,6 +486,8 @@ btnToggleEdit.addEventListener('click', () => {
   inputCompany.value = cardData.company;
   inputPhone.value = cardData.phone;
   inputEmail.value = cardData.email;
+  inputAlbumTitle.value = cardData.albumTitle || '경력 및 자격증 (슬라이드)';
+  renderCertEditRows(cardData.certificates || []);
   
   editModal.classList.add('show');
 });
@@ -335,7 +515,33 @@ btnSaveEdit.addEventListener('click', () => {
     return;
   }
   
-  cardData = { name, title, company, phone, email };
+  // Extract certificates from edit list rows
+  const certsArray = [];
+  const rows = certEditList.querySelectorAll('.cert-edit-row');
+  rows.forEach(row => {
+    const imgVal = row.dataset.imageData || '';
+    const titleVal = row.querySelector('.cert-title-input').value.trim();
+    const tagVal = row.querySelector('.cert-tag-input').value.trim();
+    
+    // Only save if at least title is provided
+    if (titleVal) {
+      certsArray.push({
+        image: imgVal,
+        title: titleVal,
+        tag: tagVal || '자격증'
+      });
+    }
+  });
+  
+  cardData = {
+    name,
+    title,
+    company,
+    phone,
+    email,
+    albumTitle: inputAlbumTitle.value.trim(),
+    certificates: certsArray
+  };
   
   // 1. Save to LocalStorage immediately for instant local UI update
   localStorage.setItem('cardData', JSON.stringify(cardData));
@@ -345,7 +551,7 @@ btnSaveEdit.addEventListener('click', () => {
   
   // 2. Sync to Firestore in the background
   console.log('Syncing card data to Firestore...');
-  setDoc(cardDocRef, cardData)
+  cardDocRef.set(cardData)
     .then(() => {
       console.log('Successfully synced card data to Firestore');
     })
