@@ -254,7 +254,7 @@ body {
   font-weight: 500;
 }
 
-/* Album Section (Horizontal Slider) */
+/* Album Section (Grid Style with Vertical Scroll) */
 .album-section {
   margin-bottom: 15px;
   transform: translateZ(35px);
@@ -269,45 +269,50 @@ body {
   margin-bottom: 8px;
 }
 
-/* Slider Wrapper */
-.album-slider-wrapper {
-  position: relative;
+/* Grid Wrapper for Vertical Scrolling */
+.album-grid-wrapper {
+  max-height: 220px; /* 2행(카드 높이 100px x 2)을 고려한 최대 높이 설정 */
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+/* Custom scrollbar for grid wrapper */
+.album-grid-wrapper::-webkit-scrollbar {
+  width: 4px;
+}
+
+.album-grid-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.album-grid-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
 }
 
 .album-container {
-  display: flex;
-  overflow-x: auto;
-  gap: 0;
-  padding: 4px 0 6px 0;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
-  scroll-behavior: smooth;
-  border-radius: 14px;
-}
-
-/* Hide scrollbar */
-.album-container::-webkit-scrollbar {
-  display: none;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 4px 2px;
 }
 
 .album-card {
-  flex: 0 0 100%;
-  height: 140px;
-  border-radius: 14px;
+  height: 100px;
+  border-radius: 12px;
   overflow: hidden;
   position: relative;
   cursor: pointer;
-  scroll-snap-align: start;
   border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
   transition: all 0.3s ease;
   background: #f7f9fc;
 }
 
 .album-card:hover {
   border-color: var(--accent-color);
-  box-shadow: 0 8px 20px rgba(255, 212, 0, 0.2);
+  box-shadow: 0 6px 15px rgba(255, 212, 0, 0.25);
+  transform: translateY(-2px);
 }
 
 .album-card img {
@@ -327,88 +332,34 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 20px 12px 10px 12px;
-  background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
+  padding: 18px 8px 6px 8px;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
 }
 
 .album-card-title {
-  font-size: 11px;
+  font-size: 10px;
   color: #fff;
   font-weight: 600;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.4);
-  flex: 1;
-  margin-right: 6px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .album-tag {
-  background: rgba(255, 204, 0, 0.9);
+  background: rgba(255, 204, 0, 0.95);
   color: #111;
-  font-size: 8px;
-  padding: 3px 8px;
+  font-size: 7px;
+  padding: 1.5px 5px;
   border-radius: 50px;
   font-weight: 700;
-  flex-shrink: 0;
   pointer-events: none;
 }
-
-/* Dot indicators */
-.album-dots {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 5px;
-  margin-top: 8px;
-}
-
-.album-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.15);
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.album-dot.active {
-  background: var(--accent-color);
-  width: 18px;
-  border-radius: 3px;
-}
-
-/* Slider nav arrows (optional, hidden on mobile by default) */
-.album-nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(0,0,0,0.08);
-  color: var(--text-primary);
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 11px;
-  z-index: 10;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.album-nav:hover {
-  background: #fff;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.album-nav-prev { left: -10px; }
-.album-nav-next { right: -10px; }
 
 /* Actions (Grid) */
 .action-grid {

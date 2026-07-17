@@ -18,7 +18,7 @@
   <meta property="og:url" content=""> 
 
   <!-- CSS & FontAwesome -->
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=1.5.0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- Kakao SDK -->
@@ -77,19 +77,12 @@
 
       <!-- Credentials & Certificates Album Section -->
       <div class="album-section" id="album-section">
-        <span class="info-label album-section-title" id="display-album-title">경력 및 자격증 (슬라이드)</span>
-        <div class="album-slider-wrapper">
-          <button class="album-nav album-nav-prev" id="album-prev" aria-label="이전">
-            <i class="fa-solid fa-chevron-left"></i>
-          </button>
+        <span class="info-label album-section-title" id="display-album-title">경력 및 자격증</span>
+        <div class="album-grid-wrapper">
           <div class="album-container" id="album-container">
             <!-- Dynamically loaded items will go here -->
           </div>
-          <button class="album-nav album-nav-next" id="album-next" aria-label="다음">
-            <i class="fa-solid fa-chevron-right"></i>
-          </button>
         </div>
-        <div class="album-dots" id="album-dots"></div>
       </div>
 
       <div class="divider"></div>
@@ -210,6 +203,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
-  <script src="script.js?v=1.4.0"></script>
+  <script src="script.js?v=1.5.0"></script>
 </body>
 </html>

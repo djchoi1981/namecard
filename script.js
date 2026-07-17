@@ -231,13 +231,13 @@ function updateDOM() {
     card.style.removeProperty('--avatar-url');
   }
 
-  // Render Album Section Title & Certificates Slider
+  // Render Album Section Title & Certificates Grid
   const albumTitleDisplay = document.getElementById('display-album-title');
   const albumContainer = document.getElementById('album-container');
   const albumSection = document.getElementById('album-section');
   
   if (albumTitleDisplay && albumContainer && albumSection) {
-    albumTitleDisplay.innerText = cardData.albumTitle || '경력 및 자격증 (슬라이드)';
+    albumTitleDisplay.innerText = cardData.albumTitle || '경력 및 자격증';
     albumContainer.innerHTML = '';
     
     const certs = cardData.certificates || [];
@@ -246,14 +246,14 @@ function updateDOM() {
     } else {
       albumSection.style.display = 'block';
 
-      // Build cards
-      certs.forEach((cert, idx) => {
+      // Build grid cards
+      certs.forEach((cert) => {
         const card = document.createElement('div');
         card.className = 'album-card';
         card.onclick = () => window.openLightbox(cert.image, cert.title);
         
         const img = document.createElement('img');
-        img.src = cert.image;
+        img.src = cert.image || 'cert1.png'; // 기본 대체 이미지 설정
         img.alt = cert.title;
         
         // Overlay with title + tag
@@ -274,42 +274,6 @@ function updateDOM() {
         card.appendChild(overlay);
         albumContainer.appendChild(card);
       });
-
-      // Build dots
-      const dotsContainer = document.getElementById('album-dots');
-      if (dotsContainer) {
-        dotsContainer.innerHTML = '';
-        certs.forEach((_, idx) => {
-          const dot = document.createElement('span');
-          dot.className = 'album-dot' + (idx === 0 ? ' active' : '');
-          dot.addEventListener('click', () => {
-            albumContainer.scrollTo({ left: albumContainer.offsetWidth * idx, behavior: 'smooth' });
-          });
-          dotsContainer.appendChild(dot);
-        });
-      }
-
-      // Sync dots on scroll
-      albumContainer.addEventListener('scroll', () => {
-        const index = Math.round(albumContainer.scrollLeft / albumContainer.offsetWidth);
-        document.querySelectorAll('#album-dots .album-dot').forEach((dot, i) => {
-          dot.classList.toggle('active', i === index);
-        });
-      }, { passive: true });
-
-      // Nav arrows
-      const prevBtn = document.getElementById('album-prev');
-      const nextBtn = document.getElementById('album-next');
-      if (prevBtn && nextBtn) {
-        prevBtn.onclick = () => {
-          const index = Math.round(albumContainer.scrollLeft / albumContainer.offsetWidth);
-          albumContainer.scrollTo({ left: albumContainer.offsetWidth * Math.max(0, index - 1), behavior: 'smooth' });
-        };
-        nextBtn.onclick = () => {
-          const index = Math.round(albumContainer.scrollLeft / albumContainer.offsetWidth);
-          albumContainer.scrollTo({ left: albumContainer.offsetWidth * Math.min(certs.length - 1, index + 1), behavior: 'smooth' });
-        };
-      }
     }
   }
 }
