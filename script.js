@@ -150,16 +150,22 @@ if (window.location.protocol !== 'file:') {
 }
 
 // 편집 버튼 노출 여부 판단
-// 1. URL 파라미터에 ?edit=true 가 있거나
-// 2. 로컬 개발 환경(file:/// 또는 localhost)에서 실행 중일 때만 편집 버튼을 노출합니다.
+// 깃허브 페이지를 포함한 모든 환경에서 관리자 편집 버튼을 노출하되, 프로덕션 환경에서는 진입 시 비밀번호 입력을 요구합니다.
 const urlParams = new URLSearchParams(window.location.search);
 const isLocal = window.location.protocol === 'file:' || 
                 window.location.hostname === 'localhost' || 
                 window.location.hostname === '127.0.0.1';
-const showEditButton = urlParams.get('edit') === 'true' || isLocal;
+const showEditButton = true; // 모든 환경에서 편집 아이콘 자체는 노출함
 
 if (showEditButton) {
   btnToggleEdit.style.display = 'flex';
+  // 프로덕션 환경에서만 눈에 덜 띄도록 스타일 투명도 조절
+  if (!isLocal && urlParams.get('edit') !== 'true') {
+    btnToggleEdit.style.opacity = '0.35';
+    btnToggleEdit.style.background = 'rgba(255, 255, 255, 0.4)';
+  } else {
+    btnToggleEdit.style.opacity = '1';
+  }
 } else {
   btnToggleEdit.style.display = 'none';
 }
@@ -535,6 +541,15 @@ btnAddCertItem.addEventListener('click', () => {
 
 // 6. Edit Modal Toggle
 btnToggleEdit.addEventListener('click', () => {
+  // 프로덕션 환경이면서 URL에 ?edit=true 가 없는 경우 비밀번호를 확인합니다.
+  if (!isLocal && urlParams.get('edit') !== 'true') {
+    const pw = prompt('관리자 비밀번호를 입력해주세요:');
+    if (pw !== '2464' && pw !== '0402') {
+      alert('비밀번호가 올바르지 않습니다.');
+      return;
+    }
+  }
+
   inputName.value = cardData.name;
   inputTitle.value = cardData.title;
   inputCompany.value = cardData.company;
@@ -611,35 +626,17 @@ btnSaveEdit.addEventListener('click', () => {
   editModal.classList.remove('show');
   showToast('명함 정보가 저장되었습니다.');
   
-  // 2. Sync to Firestore — strip Base64 images to stay under 1MB limit.
-  //    Images are stored in localStorage only; other browsers will see
-  //    the card without images (text/contact info still works perfectly).
-  const firestoreData = {
-    name: cardData.name,
-    title: cardData.title,
-    company: cardData.company,
-    phone: cardData.phone,
-    email: cardData.email,
-    albumTitle: cardData.albumTitle,
-    // Store only title & tag in Firestore; image Base64 stays local
-    certificates: cardData.certificates.map(c => ({
-      title: c.title,
-      tag: c.tag,
-      // Keep image only if it's a plain path/URL (not Base64)
-      image: c.image && !c.image.startsWith('data:') ? c.image : ''
-    })),
-    // Same for avatar
-    avatar: cardData.avatar && !cardData.avatar.startsWith('data:') ? cardData.avatar : ''
-  };
-
+  // 2. Sync to Firestore with compressed Base64 images.
+  //    This ensures images are stored globally in Firestore and visible on all devices.
   console.log('Syncing card data to Firestore...');
-  cardDocRef.set(firestoreData)
+  cardDocRef.set(cardData)
     .then(() => {
       console.log('Successfully synced card data to Firestore');
     })
     .catch((error) => {
       console.error('Failed to sync card data to Firestore:', error);
-      // Don't show error toast — local save already succeeded
+      alert('서버 저장에 실패했습니다. 이미지 파일의 크기가 너무 크거나 네트워크 연결 문제가 있을 수 있습니다. 에러: ' + error.message);
+      showToast('서버 동기화 실패');
     });
 });
 
